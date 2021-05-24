@@ -583,6 +583,17 @@ L<server group|ngx_http_upstream_module>.
 
 
 
+Parameter value can contain variables (1.17.8).
+In this case, if an address is specified as a domain name,
+the name is searched among the described
+L<server groups|ngx_http_upstream_module>,
+and, if not found, is determined using a
+L<ngx_http_core_module>.
+
+
+
+
+
 
 
 =head2 grpc_pass_header
@@ -719,6 +730,43 @@ field will not be passed to a gRPC server:
     grpc_set_header Accept-Encoding "";
 
 
+
+
+
+
+
+
+
+=head2 grpc_socket_keepalive
+
+
+B<syntax:> grpc_socket_keepalive I<C<on> E<verbar> C<off>>
+
+
+B<default:> I<off>
+
+
+B<context:> I<http>
+
+
+B<context:> I<server>
+
+
+B<context:> I<location>
+
+
+
+This directive appeared in version 1.15.6.
+
+
+
+
+
+Configures the “TCP keepalive” behavior
+for outgoing connections to a gRPC server.
+By default, the operating system’s settings are in effect for the socket.
+If the directive is set to the value “C<on>”, the
+C<SO_KEEPALIVE> socket option is turned on for the socket.
 
 
 

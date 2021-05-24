@@ -532,6 +532,43 @@ the connection is closed.
 
 
 
+=head2 memcached_socket_keepalive
+
+
+B<syntax:> memcached_socket_keepalive I<C<on> E<verbar> C<off>>
+
+
+B<default:> I<off>
+
+
+B<context:> I<http>
+
+
+B<context:> I<server>
+
+
+B<context:> I<location>
+
+
+
+This directive appeared in version 1.15.6.
+
+
+
+
+
+Configures the “TCP keepalive” behavior
+for outgoing connections to a memcached server.
+By default, the operating system’s settings are in effect for the socket.
+If the directive is set to the value “C<on>”, the
+C<SO_KEEPALIVE> socket option is turned on for the socket.
+
+
+
+
+
+
+
 =head1 Embedded Variables
 
 

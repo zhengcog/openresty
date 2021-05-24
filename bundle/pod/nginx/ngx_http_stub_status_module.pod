@@ -31,7 +31,7 @@ configuration parameter.
 
 
     
-    location /basic_status {
+    location = /basic_status {
         stub_status;
     }
 

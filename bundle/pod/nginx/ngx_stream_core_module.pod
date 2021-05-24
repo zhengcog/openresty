@@ -56,8 +56,7 @@ configuration parameter.
         }
     
         server {
-            listen 127.0.0.1:53 udp;
-            proxy_responses 1;
+            listen 127.0.0.1:53 udp reuseport;
             proxy_timeout 20s;
             proxy_pass dns;
         }
@@ -130,6 +129,18 @@ prefix:
 
 
 
+Port ranges (1.15.10) are specified with the
+first and last port separated by a hyphen:
+
+    
+    listen 127.0.0.1:12345-12399;
+    listen 12345-12399;
+
+
+
+
+
+
 
 The C<ssl> parameter allows specifying that all
 connections accepted on this port should work in SSL mode.
@@ -140,6 +151,9 @@ connections accepted on this port should work in SSL mode.
 
 The C<udp> parameter configures a listening socket
 for working with datagrams (1.9.13).
+In order to handle packets from the same address and port in the same session,
+the C<reuseport> parameter
+should also be specified.
 
 
 
@@ -255,9 +269,12 @@ C<reuseport>
 
 this parameter (1.9.1) instructs to create an individual listening socket
 for each worker process
-(using the C<SO_REUSEPORT> socket option), allowing a kernel
+(using the
+C<SO_REUSEPORT> socket option on Linux 3.9+ and DragonFly BSD,
+or C<SO_REUSEPORT_LB> on FreeBSD 12+), allowing a kernel
 to distribute incoming connections between worker processes.
-This currently works only on Linux 3.9+ and DragonFly BSD.
+This currently works only on Linux 3.9+, DragonFly BSD,
+and FreeBSD 12+ (1.15.1).
 
 B<NOTE>
 
@@ -420,7 +437,8 @@ the connection is closed.
 B<syntax:> resolver I<
     I<C<address>> ...
     [C<valid>=I<C<time>>]
-    [C<ipv6>=C<on>E<verbar>C<off>]>
+    [C<ipv6>=C<on>E<verbar>C<off>]
+    [C<status_zone>=I<C<zone>>]>
 
 
 
@@ -444,8 +462,8 @@ into addresses, for example:
     resolver 127.0.0.1 [::1]:5353;
 
 
-An address can be specified as a domain name or IP address,
-and an optional port.
+The address can be specified as a domain name or IP address,
+with an optional port.
 If port is not specified, the port 53 is used.
 Name servers are queried in a round-robin fashion.
 
@@ -466,6 +484,29 @@ The optional C<valid> parameter allows overriding it:
 
     
     resolver 127.0.0.1 [::1]:5353 valid=30s;
+
+
+
+B<NOTE>
+
+To prevent DNS spoofing, it is recommended
+configuring DNS servers in a properly secured trusted local network.
+
+
+
+
+
+
+The optional C<status_zone> parameter (1.17.1)
+enables
+L<collection|ngx_http_api_module>
+of DNS server statistics of requests and responses
+in the specified I<C<zone>>.
+The parameter is available as part of our
+commercial subscription.
+
+
+
 
 
 
@@ -753,8 +794,7 @@ C<TCP> or C<UDP> (1.11.4)
 
 
 
-client address from the PROXY protocol header, or an empty string otherwise
-(1.11.4)
+client address from the PROXY protocol header (1.11.4)
 
 
 The PROXY protocol must be previously enabled by setting the
@@ -770,8 +810,39 @@ in the L</listen> directive.
 
 
 
-client port from the PROXY protocol header, or an empty string otherwise
-(1.11.4)
+client port from the PROXY protocol header (1.11.4)
+
+
+The PROXY protocol must be previously enabled by setting the
+C<proxy_protocol> parameter
+in the L</listen> directive.
+
+
+
+
+
+=item C<$proxy_protocol_server_addr>
+
+
+
+
+server address from the PROXY protocol header (1.17.6)
+
+
+The PROXY protocol must be previously enabled by setting the
+C<proxy_protocol> parameter
+in the L</listen> directive.
+
+
+
+
+
+=item C<$proxy_protocol_server_port>
+
+
+
+
+server port from the PROXY protocol header (1.17.6)
 
 
 The PROXY protocol must be previously enabled by setting the

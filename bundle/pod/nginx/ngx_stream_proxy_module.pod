@@ -36,8 +36,7 @@ data streams over TCP, UDP (1.9.13), and UNIX-domain sockets.
     }
     
     server {
-        listen 53 udp;
-        proxy_responses 1;
+        listen 53 udp reuseport;
         proxy_timeout 20s;
         proxy_pass dns.example.com:53;
     }
@@ -200,6 +199,24 @@ The zero value disables rate limiting.
 The limit is set per a connection, so if nginx simultaneously opens
 two connections to the proxied server,
 the overall rate will be twice as much as the specified limit.
+
+
+
+
+
+Parameter value can contain variables (1.17.0).
+It may be useful in cases where rate should be limited
+depending on a certain condition:
+
+    
+    map $slow $rate {
+        1     4k;
+        2     8k;
+    }
+    
+    proxy_download_rate $rate;
+
+
 
 
 
@@ -388,6 +405,43 @@ protocol|http://www.haproxy.org/download/1.5/doc/proxy-protocol.txt> for connect
 
 
 
+=head2 proxy_requests
+
+
+B<syntax:> proxy_requests I<I<C<number>>>
+
+
+B<default:> I<0>
+
+
+B<context:> I<stream>
+
+
+B<context:> I<server>
+
+
+
+This directive appeared in version 1.15.7.
+
+
+
+
+
+Sets the number of client datagrams at which
+binding between a client and existing UDP stream session is dropped.
+After receiving the specified number of datagrams, next datagram
+from the same client starts a new session.
+The session terminates when all client datagrams are transmitted
+to a proxied server and the expected number of
+responses is received,
+or when it reaches a timeout.
+
+
+
+
+
+
+
 =head2 proxy_responses
 
 
@@ -409,12 +463,107 @@ This directive appeared in version 1.9.13.
 
 
 Sets the number of datagrams expected from the proxied server
-in response to the client request
+in response to a client datagram
 if the L<UDP|ngx_stream_core_module>
 protocol is used.
-By default, the number of datagrams is not limited:
-the response datagrams will be sent
-until the L</proxy_timeout> value expires.
+The number serves as a hint for session termination.
+By default, the number of datagrams is not limited.
+
+
+
+
+
+If zero value is specified, no response is expected.
+However, if a response is received and the
+session is still not finished, the response will be handled.
+
+
+
+
+
+
+
+=head2 proxy_session_drop
+
+
+B<syntax:> proxy_session_drop I<C<on> E<verbar> C<off>>
+
+
+B<default:> I<off>
+
+
+B<context:> I<stream>
+
+
+B<context:> I<server>
+
+
+
+This directive appeared in version 1.15.8.
+
+
+
+
+
+Enables terminating all sessions to a proxied server
+after it was removed from the group or marked as permanently unavailable.
+This can occur because of
+L<re-resolve|ngx_stream_core_module>
+or with the API
+L<C<DELETE>|ngx_http_api_module>
+command.
+A server can be marked as permanently unavailable if it is considered
+L<unhealthy|ngx_stream_upstream_hc_module>
+or with the API
+L<C<PATCH>|ngx_http_api_module>
+command.
+Each session is terminated when the next
+read or write event is processed for the client or proxied server.
+
+
+
+
+
+
+B<NOTE>
+
+This directive is available as part of our
+commercial subscription.
+
+
+
+
+
+
+
+
+=head2 proxy_socket_keepalive
+
+
+B<syntax:> proxy_socket_keepalive I<C<on> E<verbar> C<off>>
+
+
+B<default:> I<off>
+
+
+B<context:> I<stream>
+
+
+B<context:> I<server>
+
+
+
+This directive appeared in version 1.15.6.
+
+
+
+
+
+Configures the “TCP keepalive” behavior
+for outgoing connections to a proxied server.
+By default, the operating system’s settings are in effect for the socket.
+If the directive is set to the value “C<on>”, the
+C<SO_KEEPALIVE> socket option is turned on for the socket.
 
 
 
@@ -847,6 +996,24 @@ The zero value disables rate limiting.
 The limit is set per a connection, so if the client simultaneously opens
 two connections,
 the overall rate will be twice as much as the specified limit.
+
+
+
+
+
+Parameter value can contain variables (1.17.0).
+It may be useful in cases where rate should be limited
+depending on a certain condition:
+
+    
+    map $slow $rate {
+        1     4k;
+        2     8k;
+    }
+    
+    proxy_upload_rate $rate;
+
+
 
 
 

@@ -15,6 +15,12 @@ The C<ngx_http_gzip_module> module is a filter
 that compresses responses using the “gzip” method.
 This often helps to reduce the size of transmitted data by half or even more.
 
+B<NOTE>
+
+When using the SSLE<sol>TLS protocol, compressed responses may be subject to
+L<BREACH|https://en.wikipedia.org/wiki/BREACH> attacks.
+
+
 
 
 

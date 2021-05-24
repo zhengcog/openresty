@@ -39,7 +39,7 @@ via the L<ngx_http_core_module> directive.
 
 
 The module supports the following cryptographic
-L<algorithms|https://tools.ietf.org/html/rfc7518#section-3.1>:
+L<algorithms|https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms>:
 
 
 =over
@@ -62,6 +62,12 @@ RS256, RS384, RS512
 =item *
 
 ES256, ES384, ES512
+
+
+
+=item *
+
+EdDSA (Ed25519 and Ed448 signatures) (1.15.7)
 
 
 
@@ -188,12 +194,8 @@ Name matching starts from the top level of the JSON tree.
 For arrays, the variable keeps a list of array elements separated by commas.
 
     
-    location / {
-        auth_jwt           "closed site";
-        auth_jwt_key_file  conf/keys.json;
-        auth_jwt_claim_set $email info e-mail;
-        auth_jwt_claim_set $job info "job title";
-    }
+    auth_jwt_claim_set $email info e-mail;
+    auth_jwt_claim_set $job info "job title";
 
 
 
@@ -276,6 +278,65 @@ Parameter value can contain variables.
 
 
 
+=head2 auth_jwt_key_request
+
+
+B<syntax:> auth_jwt_key_request I<I<C<uri>>>
+
+
+
+B<context:> I<http>
+
+
+B<context:> I<server>
+
+
+B<context:> I<location>
+
+
+B<context:> I<limit_except>
+
+
+
+This directive appeared in version 1.15.6.
+
+
+
+
+
+Allows retrieving a
+L<JSON Web Key Set|https://tools.ietf.org/html/rfc7517#section-5>
+file from a subrequest for validating JWT signature and
+sets the URI where the subrequest will be sent to.
+To avoid validation overhead,
+it is recommended to cache the key file:
+
+    
+    proxy_cache_path /data/nginx/cache levels=1 keys_zone=foo:10m;
+    
+    server {
+        ...
+    
+        location / {
+            auth_jwt             "closed site";
+            auth_jwt_key_request /jwks_uri;
+        }
+    
+        location = /jwks_uri {
+            internal;
+            proxy_cache foo;
+            proxy_pass  http://idp.example.com/keys;
+        }
+    }
+
+
+
+
+
+
+
+
+
 =head2 auth_jwt_leeway
 
 
@@ -346,6 +407,14 @@ L<JOSE header|https://tools.ietf.org/html/rfc7515#section-4>
 
 returns the value of a specified
 L<JWT claim|https://tools.ietf.org/html/rfc7519#section-4>
+
+
+
+For nested claims and claims including a dot (“.”),
+the value of the variable cannot be evaluated;
+the L</auth_jwt_claim_set> directive should be used instead.
+
+
 
 
 

@@ -606,7 +606,7 @@ L<ngx_http_core_module>
 directive (1.13.10):
 
     
-    location /remote {
+    location /remote/ {
         subrequest_output_buffer_size 64k;
         ...
     }

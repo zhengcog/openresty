@@ -148,6 +148,34 @@ With older versions, only one certificate chain can be used.
 
 
 
+Since version 1.15.9, variables can be used in the I<C<file>> name
+when using OpenSSL 1.0.2 or higher:
+
+    
+    ssl_certificate     $ssl_server_name.crt;
+    ssl_certificate_key $ssl_server_name.key;
+
+
+Note that using variables implies that
+a certificate will be loaded for each SSL handshake,
+and this may have a negative impact on performance.
+
+
+
+
+
+The value
+C<data>:I<C<$variable>>
+can be specified instead of the I<C<file>> (1.15.10),
+which loads a certificate from a variable without using intermediate files.
+Note that inappropriate use of this syntax may have its security implications,
+such as writing secret key data to
+L<error log|ngx_core_module>.
+
+
+
+
+
 
 
 =head2 ssl_certificate_key
@@ -178,6 +206,25 @@ C<engine>:I<C<name>>:I<C<id>>
 can be specified instead of the I<C<file>>,
 which loads a secret key with a specified I<C<id>>
 from the OpenSSL engine I<C<name>>.
+
+
+
+
+
+The value
+C<data>:I<C<$variable>>
+can be specified instead of the I<C<file>> (1.15.10),
+which loads a secret key from a variable without using intermediate files.
+Note that inappropriate use of this syntax may have its security implications,
+such as writing secret key data to
+L<error log|ngx_core_module>.
+
+
+
+
+
+Since version 1.15.9, variables can be used in the I<C<file>> name
+when using OpenSSL 1.0.2 or higher.
 
 
 
@@ -309,6 +356,18 @@ B<context:> I<server>
 
 
 Specifies a I<C<file>> with DH parameters for DHE ciphers.
+
+
+
+
+
+By default no parameters are set,
+and therefore DHE ciphers will not be used.
+
+B<NOTE>
+
+Prior to version 1.11.0, builtin parameters were used by default.
+
 
 
 
@@ -872,7 +931,7 @@ since 1.11.2.
 
 
 
-returns the string of ciphers used
+returns the name of the cipher used
 for an established SSL connection;
 
 

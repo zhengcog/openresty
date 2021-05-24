@@ -43,6 +43,14 @@ directive values.
 
 
 
+
+Before version 1.19.1,
+the L<ngx_http_core_module> mechanism
+was not used to control closing HTTPE<sol>2 connections.
+
+
+
+
 =head1 Example Configuration
 
 
@@ -317,6 +325,15 @@ push requests) that can be served
 through one HTTPE<sol>2 connection,
 after which the next client request will lead to connection closing
 and the need of establishing a new connection.
+
+
+
+
+
+Closing connections periodically is necessary to free
+per-connection memory allocations.
+Therefore, using too high maximum number of requests
+could result in excessive memory usage and not recommended.
 
 
 

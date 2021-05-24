@@ -151,7 +151,7 @@ L<stream_processing>
 
 =item *
 
-L<njs_about>
+L<Scripting with njs|index>
 
 
 

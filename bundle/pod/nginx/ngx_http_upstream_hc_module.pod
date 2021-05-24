@@ -440,6 +440,27 @@ body does not match regular expression “C<Welcome to nginx!>”
 
 
 
+=over
+
+
+
+=item C<require>
+                             I<C<$variable>>
+                             C<...;>
+
+
+
+
+all specified variables are not empty and not equal to “0” (1.15.9).
+
+
+
+
+=back
+
+
+
+
 
 
 
@@ -484,6 +505,20 @@ Examples:
     match server_ok {
         status 200-399;
         body !~ "maintenance mode";
+    }
+
+
+
+
+    
+    # status is 200 or 204
+    map $upstream_status $good_status {
+        200 1;
+        204 1;
+    }
+    
+    match server_ok {
+        require $good_status;
     }
 
 

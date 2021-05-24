@@ -17,9 +17,13 @@ L<shared memory zones|ngx_stream_upstream_module>
 between nodes of a cluster.
 To enable synchronization for a particular zone, a corresponding module
 must support this feature.
-Currently, it is possible to synchronize
+Currently, it is possible to synchronize HTTP
 L<sticky|ngx_http_upstream_module>
-sessions.
+sessions, information about
+L<excessive HTTP requests|ngx_http_limit_req_module>,
+and key-value pairs both in
+L<http|ngx_http_keyval_module>
+and L<stream|ngx_stream_keyval_module>.
 
 
 
@@ -65,11 +69,11 @@ Minimal configuration:
         server {
             zone_sync;
     
-            listen 127.0.0.1:8090;
+            listen 127.0.0.1:12345;
     
             # cluster of 2 nodes
-            zone_sync_server a.example.com;
-            zone_sync_server b.example.com;
+            zone_sync_server a.example.com:12345;
+            zone_sync_server b.example.com:12345;
     
         }
 
@@ -89,7 +93,7 @@ and with cluster members defined by DNS:
             zone_sync;
     
             # the name resolves to multiple addresses that correspond to cluster nodes
-            zone_sync_server cluster.example.com resolve;
+            zone_sync_server cluster.example.com:12345 resolve;
     
             listen 127.0.0.1:4433 ssl;
     
@@ -140,7 +144,7 @@ Cluster nodes are defined using L</zone_sync_server> directives.
 B<syntax:> zone_sync_buffers I<I<C<number>> I<C<size>>>
 
 
-B<default:> I<256 4kE<verbar>8k>
+B<default:> I<8 4kE<verbar>8k>
 
 
 B<context:> I<stream>
@@ -156,6 +160,17 @@ Sets the I<C<number>> and I<C<size>> of the
 per-zone buffers used for pushing zone contents.
 By default, the buffer size is equal to one memory page.
 This is either 4K or 8K, depending on a platform.
+
+
+
+
+
+
+B<NOTE>
+
+A single buffer must be large enough to hold any entry of each zone being
+synchronized.
+
 
 
 
@@ -261,8 +276,11 @@ B<context:> I<server>
 
 Sets I<C<size>> of a per-connection receive buffer used to parse
 incoming stream of synchronization messages.
-By default, the buffer size is equal to one memory page.
-This is either 4K or 8K, depending on a platform.
+The buffer size must be equal or greater than one of the
+L</zone_sync_buffers>.
+By default, the buffer size is equal to
+zone_sync_buffers I<C<size>>
+multiplied by I<C<number>>.
 
 
 
@@ -336,7 +354,7 @@ Example:
     
         server {
             zone_sync;
-            zone_sync_server cluster.example.com resolve;
+            zone_sync_server cluster.example.com:12345 resolve;
             ...
         }
     }
@@ -485,6 +503,47 @@ the certificate of another cluster server.
 
 
 
+=head2 zone_sync_ssl_name
+
+
+B<syntax:> zone_sync_ssl_name I<I<C<name>>>
+
+
+B<default:> I<host from zone_sync_server>
+
+
+B<context:> I<stream>
+
+
+B<context:> I<server>
+
+
+
+This directive appeared in version 1.15.7.
+
+
+
+
+
+Allows overriding the server name used to
+verify
+the certificate of a cluster server and to be
+passed through SNI
+when establishing a connection with the cluster server.
+
+
+
+
+
+By default, the host part of the L</zone_sync_server> address is used,
+or resolved IP address if the L</resolve> parameter is specified.
+
+
+
+
+
+
+
 =head2 zone_sync_ssl_password_file
 
 
@@ -537,6 +596,39 @@ B<context:> I<server>
 
 
 Enables the specified protocols for connections to another cluster server.
+
+
+
+
+
+
+
+=head2 zone_sync_ssl_server_name
+
+
+B<syntax:> zone_sync_ssl_server_name I<C<on> E<verbar> C<off>>
+
+
+B<default:> I<off>
+
+
+B<context:> I<stream>
+
+
+B<context:> I<server>
+
+
+
+This directive appeared in version 1.15.7.
+
+
+
+
+
+Enables or disables passing of the server name through
+L<TLS
+Server Name Indication extension|http://en.wikipedia.org/wiki/Server_Name_Indication> (SNI, RFC 6066)
+when establishing a connection with another cluster server.
 
 
 

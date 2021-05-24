@@ -15,7 +15,7 @@ The C<ngx_stream_ssl_preread_module> module (1.11.5) allows
 extracting information from the
 L<ClientHello|https://tools.ietf.org/html/rfc5246#section-7.4.1.2>
 message without terminating SSLE<sol>TLS,
-for example, the sever name requested through
+for example, the server name requested through
 L<SNI|https://tools.ietf.org/html/rfc6066#section-3>
 or protocols advertised in
 L<ALPN|https://tools.ietf.org/html/rfc7301>.
@@ -81,6 +81,27 @@ Selecting an upstream based on protocol:
 
 
 
+Selecting an upstream based on SSL protocol version:
+
+    
+    map $ssl_preread_protocol $upstream {
+        ""        ssh.example.com:22;
+        "TLSv1.2" new.example.com:443;
+        default   tls.example.com:443;
+    }
+    
+    # ssh and https on the same port
+    server {
+        listen      192.168.0.1:443;
+        proxy_pass  $upstream;
+        ssl_preread on;
+    }
+
+
+
+
+
+
 =head1 Directives
 
 =head2 ssl_preread
@@ -116,6 +137,15 @@ the L<preread|stream_processing> phase.
 
 
 =over
+
+
+
+=item C<$ssl_preread_protocol>
+
+
+
+
+the highest SSL protocol version supported by the client (1.15.2)
 
 
 

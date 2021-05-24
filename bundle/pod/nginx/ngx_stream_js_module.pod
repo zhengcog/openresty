@@ -12,36 +12,15 @@ ngx_stream_js_module - Module ngx_stream_js_module
 
 
 The C<ngx_stream_js_module> module is used to implement
-handlers in L<njs|njs_about> —
+handlers in L<njs|index> —
 a subset of the JavaScript language.
 
 
 
 
 
-This module is not built by default, it should be compiled with
-the njs module using the
-C<--add-module> configuration parameter:
-
-    
-    ./configure --add-module=<value>path-to-njs</value>/nginx
-
-
-The L<repository|http://hg.nginx.org/njs>
-with the njs module can be cloned with the following command
-(requires L<Mercurial|https://www.mercurial-scm.org> client):
-
-    
-    hg clone http://hg.nginx.org/njs
-
-
-This module can also be built as
-L<dynamic|ngx_core_module>:
-
-    
-    ./configure --add-dynamic-module=<value>path-to-njs</value>/nginx
-
-
+Download and install instructions are available
+L<here|install>.
 
 
 
@@ -50,27 +29,29 @@ L<dynamic|ngx_core_module>:
 
 
 
+The example works since
+L<0.4.0|changes>.
 
     
     stream {
-        js_include stream.js;
+        js_import stream.js;
     
-        js_set $foo foo;
-        js_set $bar bar;
+        js_set $bar stream.bar;
+        js_set $req_line stream.req_line;
     
         server {
             listen 12345;
     
-            js_preread qux;
-            return     $foo;
+            js_preread stream.preread;
+            return     $req_line;
         }
     
         server {
             listen 12346;
     
-            js_access  xyz;
+            js_access  stream.access;
             proxy_pass 127.0.0.1:8000;
-            js_filter  baz;
+            js_filter  stream.header_inject;
         }
     }
     
@@ -92,77 +73,58 @@ L<dynamic|ngx_core_module>:
 The F<stream.js> file:
 
     
-    var req = '';
-    var matched = 0;
     var line = '';
-    
-    function qux(s) {
-        var n = s.buffer.indexOf('\n');
-        if (n == -1) {
-            return s.AGAIN;
-        }
-    
-        line = s.buffer.substr(0, n);
-    }
-    
-    function foo(s) {
-        return line;
-    }
     
     function bar(s) {
         var v = s.variables;
         s.log("hello from bar() handler!");
-        return "foo-var" + v.remote_port + "; pid=" + v.pid;
+        return "bar-var" + v.remote_port + "; pid=" + v.pid;
     }
     
-    // The filter processes one buffer per call.
-    // The buffer is available in s.buffer both for
-    // reading and writing.  Called for both directions.
+    function preread(s) {
+        s.on('upload', function (data, flags) {
+            var n = data.indexOf('\n');
+            if (n != -1) {
+                line = data.substr(0, n);
+                s.done();
+            }
+        });
+    }
     
-    function baz(s) {
-        if (s.fromUpstream || matched) {
+    function req_line(s) {
+        return line;
+    }
+    
+    // Read HTTP request line.
+    // Collect bytes in 'req' until
+    // request line is read.
+    // Injects HTTP header into a client's request
+    
+    var my_header =  'Foo: foo';
+    function header_inject(s) {
+        var req = '';
+        s.on('upload', function(data, flags) {
+            req += data;
+            var n = req.search('\n');
+            if (n != -1) {
+                var rest = req.substr(n + 1);
+                req = req.substr(0, n + 1);
+                s.send(req + my_header + '\r\n' + rest, flags);
+                s.off('upload');
+            }
+        });
+    }
+    
+    function access(s) {
+        if (s.remoteAddress.match('^192.*')) {
+            s.abort();
             return;
         }
     
-        // Disable certain addresses.
-    
-        if (s.remoteAddress.match('^192.*')) {
-            return s.ERROR;
-        }
-    
-        // Read HTTP request line.
-        // Collect bytes in 'req' until request
-        // line is read.  Clear current buffer to
-        // disable output.
-    
-        req = req + s.buffer;
-        s.buffer = '';
-    
-        var n = req.search('\n');
-    
-        if (n != -1) {
-            // Inject a new HTTP header.
-            var rest = req.substr(n + 1);
-            req = req.substr(0, n + 1);
-    
-            var addr = s.remoteAddress;
-    
-            s.log('req:' + req);
-            s.log('rest:' + rest);
-    
-            // Output the result and skip further
-            // processing.
-    
-            s.buffer = req + 'Foo: addr_' + addr + '\r\n' + rest;
-            matched = 1;
-        }
+        s.allow();
     }
     
-    function xyz(s) {
-        if (s.remoteAddress.match('^192.*')) {
-            return s.ABORT;
-        }
-    }
+    export default {bar, preread, req_line, access};
 
 
 
@@ -174,7 +136,7 @@ The F<stream.js> file:
 =head2 js_access
 
 
-B<syntax:> js_access I<I<C<function>>>
+B<syntax:> js_access I<I<C<function>> E<verbar> I<C<module.function>>>
 
 
 
@@ -189,6 +151,8 @@ B<context:> I<server>
 
 Sets an njs function which will be called at the
 L<access|stream_processing> phase.
+Since L<0.4.0|changes>,
+a module function can be referenced.
 
 
 
@@ -199,7 +163,7 @@ L<access|stream_processing> phase.
 =head2 js_filter
 
 
-B<syntax:> js_filter I<I<C<function>>>
+B<syntax:> js_filter I<I<C<function>> E<verbar> I<C<module.function>>>
 
 
 
@@ -213,6 +177,53 @@ B<context:> I<server>
 
 
 Sets a data filter.
+Since L<0.4.0|changes>,
+a module function can be referenced.
+
+
+
+
+
+
+
+=head2 js_import
+
+
+B<syntax:> js_import I<I<C<module.js>> E<verbar>
+I<C<export_name from module.js>>>
+
+
+
+B<context:> I<stream>
+
+
+
+This directive appeared in version 0.4.0.
+
+
+
+
+
+Imports a module that implements location and variable handlers in njs.
+The C<export_name> is used as a namespace
+to access module functions.
+If the C<export_name> is not specified,
+the module name will be used as a namespace.
+
+    
+    js_import stream.js;
+
+
+Here, the module name C<stream> is used as a namespace
+while accessing exports.
+If the imported module contains C<foo()>,
+C<stream.foo> is used to refer to it.
+
+
+
+
+
+Several C<js_import> directives can be specified.
 
 
 
@@ -233,7 +244,57 @@ B<context:> I<stream>
 
 
 
-Specifies a file that implements server and variable handlers in njs.
+Specifies a file that implements server and variable handlers in njs:
+
+    
+    nginx.conf:
+    js_include stream.js;
+    js_set     $js_addr address;
+    server {
+        listen 127.0.0.1:12345;
+        return $js_addr;
+    }
+    
+    stream.js:
+    function address(s) {
+        return s.remoteAddress;
+    }
+
+
+
+
+
+
+
+The directive is deprecated since
+L<0.4.0|changes>,
+the L</js_import> directive should be used instead.
+
+
+
+
+
+
+
+=head2 js_path
+
+
+B<syntax:> js_path I<
+I<C<path>>>
+
+
+
+B<context:> I<http>
+
+
+
+This directive appeared in version 0.3.0.
+
+
+
+
+
+Sets an additional path for njs modules.
 
 
 
@@ -244,7 +305,7 @@ Specifies a file that implements server and variable handlers in njs.
 =head2 js_preread
 
 
-B<syntax:> js_preread I<I<C<function>>>
+B<syntax:> js_preread I<I<C<function>> E<verbar> I<C<module.function>>>
 
 
 
@@ -259,6 +320,8 @@ B<context:> I<server>
 
 Sets an njs function which will be called at the
 L<preread|stream_processing> phase.
+Since L<0.4.0|changes>,
+a module function can be referenced.
 
 
 
@@ -270,7 +333,8 @@ L<preread|stream_processing> phase.
 
 
 B<syntax:> js_set I<
-I<C<$variable>> I<C<function>>>
+I<C<$variable>> I<C<function>> E<verbar>
+I<C<module.function>>>
 
 
 
@@ -281,6 +345,8 @@ B<context:> I<stream>
 
 
 Sets an njs function for the specified variable.
+Since L<0.4.0|changes>,
+a module function can be referenced.
 
 
 
@@ -292,138 +358,8 @@ Sets an njs function for the specified variable.
 
 
 
-Each stream njs handler receives one argument, a stream session object.
-
-
-
-
-
-The session object has the following properties:
-
-
-=over
-
-
-
-=item C<remoteAddress>
-
-
-
-
-client address, read-only
-
-
-
-=item C<eof>
-
-
-
-
-a boolean read-only property, true if the current buffer is the last buffer
-
-
-
-=item C<fromUpstream>
-
-
-
-
-a boolean read-only property,
-true if the current buffer is from the upstream server to the client
-
-
-
-=item C<buffer>
-
-
-
-
-the current buffer, writable
-
-
-
-=item C<variables{}>
-
-
-
-
-nginx variables object, read-only
-
-
-
-=item C<OK>
-
-
-
-
-the C<OK> return code
-
-
-
-=item C<DECLINED>
-
-
-
-
-the C<DECLINED> return code
-
-
-
-=item C<AGAIN>
-
-
-
-
-the C<AGAIN> return code
-
-
-
-=item C<ERROR>
-
-
-
-
-the C<ERROR> return code
-
-
-
-=item C<ABORT>
-
-
-
-
-the C<ABORT> return code
-
-
-
-=back
-
-
-
-
-
-
-
-The session object has the following methods:
-
-
-=over
-
-
-
-=item C<log(I<C<string>>)>
-
-
-
-
-writes a sent I<C<string>> to the error log
-on the C<info> level of logging
-
-
-
-=back
-
-
+Each stream njs handler receives one argument, a stream session
+L<object|reference>.
 
 
 

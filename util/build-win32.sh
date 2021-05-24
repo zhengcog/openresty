@@ -1,13 +1,13 @@
 #!/bin/bash
 
-PCRE=pcre-8.42
+PCRE=pcre-8.44
 ZLIB=zlib-1.2.11
-OPENSSL=openssl-1.1.0h
+OPENSSL=openssl-1.1.1g
 JOBS=12
 
-# wget https://www.openssl.org/source/openssl-1.1.0h.tar.gz
+# wget https://www.openssl.org/source/openssl-1.1.1g.tar.gz
 # wget http://zlib.net/zlib-1.2.11.tar.gz
-# wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.42.tar.gz
+# wget https://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz
 
 rm -rf objs || exit 1
 mkdir -p objs/lib || exit 1
@@ -19,8 +19,10 @@ tar -xf ../../../$PCRE.tar.gz || exit 1
 cd ../..
 
 cd objs/lib/$OPENSSL || exit 1
-patch -p1 < ../../../patches/openssl-1.1.0d-sess_set_get_cb_yield.patch \
-    || exit 1
+#patch -p1 < ../../../patches/openssl-1.1.0j-parallel_build_fix.patch || exit 1
+patch -p1 < ../../../patches/openssl-1.1.1f-sess_set_get_cb_yield.patch || exit 1
+#patch -p1 < ../../../patches/openssl-1.1.1d-win_fix.patch || exit 1
+#patch -p1 < ../../../patches/openssl-1.1.1e-sess_set_get_cb_yield.patch || exit 1
 cd ../../..
 
     #--with-openssl-opt="no-asm" \
